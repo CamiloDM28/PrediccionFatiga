@@ -43,7 +43,7 @@ with col_info:
 
     if entrenar:
         with st.spinner("Entrenando modelo..."):
-            ruta_train = os.path.join(os.path.dirname(__file__), "train.py")
+            ruta_train = os.path.join(os.path.dirname(__file__), "Train.py")
 
             resultado = subprocess.run(
                 ["python", ruta_train],
