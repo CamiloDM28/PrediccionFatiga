@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
-import subprocess
 import joblib
+import subprocess
+import os
 
 st.set_page_config(page_title="Predicción de Fatiga Ciclista", page_icon="🚴", layout="wide")
 
 st.title("Predicción de fatiga ciclista")
-st.text("Estimación del nivel de agotamiento físico mediante Machine Learning")
+st.caption("Estimación del nivel de agotamiento físico mediante Machine Learning")
 st.divider()
 
 col_info, col_form = st.columns([1, 1.2], gap="large")
@@ -16,7 +17,6 @@ with col_info:
 
     st.subheader("Descripción")
     st.write("Ingresa las métricas del ciclista para estimar su nivel de fatiga usando dos modelos entrenados.")
-
     st.markdown("**KNN** — Compara con ciclistas de condiciones similares en los datos de entrenamiento.")
     st.markdown("**Regresión lineal** — Calcula la fatiga por relación matemática entre las variables ingresadas.")
 
@@ -35,24 +35,30 @@ with col_info:
 
     st.divider()
 
+    # ── Botón entrenar ─────────────────────────────────────────────────────────
+    st.subheader("Entrenamiento del modelo")
+    st.write("Si aún no has entrenado el modelo o quieres actualizarlo con nuevos datos, haz clic aquí.")
+
     entrenar = st.button("Entrenar modelo", use_container_width=True)
 
     if entrenar:
         with st.spinner("Entrenando modelo..."):
+            ruta_train = os.path.join(os.path.dirname(__file__), "train.py")
+
             resultado = subprocess.run(
-            ["python", "train.py"],
-            capture_output=True,
-            text=True
-        )
+                ["python", ruta_train],
+                capture_output=True,
+                text=True
+            )
 
-        if resultado.returncode == 0:
-            st.success("Modelo entrenado y guardado correctamente.")
-            st.code(resultado.stdout)
-        else:
-            st.error("Error durante el entrenamiento.")
-            st.code(resultado.stderr)    
+            if resultado.returncode == 0:
+                st.success("Modelo entrenado y guardado correctamente.")
+                st.code(resultado.stdout)
+            else:
+                st.error("Error durante el entrenamiento.")
+                st.code(resultado.stderr)
 
-# ── Columna derecha: formulario y resultados ───────────────────────────────────
+# ── Columna derecha: formulario y predicción ───────────────────────────────────
 with col_form:
 
     st.subheader("Datos del ciclista")
@@ -73,7 +79,9 @@ with col_form:
 
     if predecir:
         try:
-            datos = joblib.load("modelos_ciclismo.pkl")
+            ruta_pkl = os.path.join(os.path.dirname(__file__), "modelos_ciclismo.pkl")
+
+            datos      = joblib.load(ruta_pkl)
             modelo_knn = datos["knn"]
             modelo_lr  = datos["lr"]
             scaler     = datos["scaler"]
@@ -106,5 +114,7 @@ with col_form:
                     st.metric(label=nombre, value=f"{pred:.1f} / 100")
                     st.write(f"**{nivel}** — {estado}")
 
-        except:
-            st.error("Primero debes ejecutar train.py para generar el archivo de modelos.")
+        except FileNotFoundError:
+            st.error("Primero debes entrenar el modelo usando el botón de la izquierda.")
+        except Exception as e:
+            st.error(f"Error al predecir: {e}")
