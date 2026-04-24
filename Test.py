@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import subprocess
 import os
 
 st.set_page_config(page_title="Predicción de Fatiga Ciclista", page_icon="🚴", layout="wide")
@@ -33,31 +32,6 @@ with col_info:
     for icono, rango, nivel, desc in niveles:
         st.markdown(f"{icono} **{rango}** · {nivel} — {desc}")
 
-    st.divider()
-
-    # ── Botón entrenar ─────────────────────────────────────────────────────────
-    st.subheader("Entrenamiento del modelo")
-    st.write("Si aún no has entrenado el modelo o quieres actualizarlo con nuevos datos, haz clic aquí.")
-
-    entrenar = st.button("Entrenar modelo", use_container_width=True)
-
-    if entrenar:
-        with st.spinner("Entrenando modelo..."):
-            ruta_train = os.path.join(os.path.dirname(__file__), "Train.py")
-
-            resultado = subprocess.run(
-                ["python", ruta_train],
-                capture_output=True,
-                text=True
-            )
-
-            if resultado.returncode == 0:
-                st.success("Modelo entrenado y guardado correctamente.")
-                st.code(resultado.stdout)
-            else:
-                st.error("Error durante el entrenamiento.")
-                st.code(resultado.stderr)
-
 # ── Columna derecha: formulario y predicción ───────────────────────────────────
 with col_form:
 
@@ -84,7 +58,6 @@ with col_form:
             datos      = joblib.load(ruta_pkl)
             modelo_knn = datos["knn"]
             modelo_lr  = datos["lr"]
-            scaler     = datos["scaler"]
             mejor_k    = datos["mejor_k"]
 
             nuevo = pd.DataFrame([[frecuencia, potencia, cadencia,
@@ -92,9 +65,8 @@ with col_form:
                                  columns=["frecuencia_cardiaca", "potencia", "cadencia",
                                           "temperatura", "tiempo", "pendiente", "velocidad"])
 
-            nuevo_scaled = scaler.transform(nuevo)
-            pred_knn = modelo_knn.predict(nuevo_scaled)[0]
-            pred_lr  = modelo_lr.predict(nuevo_scaled)[0]
+            pred_knn = modelo_knn.predict(nuevo)[0]
+            pred_lr  = modelo_lr.predict(nuevo)[0]
 
             def interpretar(valor):
                 valor = max(0, min(100, valor))
@@ -115,6 +87,6 @@ with col_form:
                     st.write(f"**{nivel}** — {estado}")
 
         except FileNotFoundError:
-            st.error("Primero debes entrenar el modelo usando el botón de la izquierda.")
+            st.error("No se encontró el archivo del modelo. Contacta al administrador.")
         except Exception as e:
             st.error(f"Error al predecir: {e}")
